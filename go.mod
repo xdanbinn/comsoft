@@ -1,3 +1,3 @@
-module MSN
+module comsoft
 
 go 1.17

@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"io"
 	"net"
 	"sync"
 )
@@ -37,7 +38,6 @@ func (s *service) ListMsg() {
 func (s *service) Boadcast(user *user, msg string) {
 	sendMsg := "[" + user.Name + "]" + user.Addr + msg
 	s.Message <- sendMsg
-
 }
 
 func (s *service) Handler(con net.Conn) {
@@ -49,6 +49,22 @@ func (s *service) Handler(con net.Conn) {
 	s.Mux.Unlock()
 	//服务器广播
 	s.Boadcast(user, "上线了")
+	go func() {
+		mes := make([]byte, 4096)
+		for {
+			n, err := con.Read(mes)
+			if n == 0 {
+				s.Boadcast(user, "下线了")
+				return
+			}
+			if err != nil && err != io.EOF {
+				fmt.Println("Conn Read Message error:", err)
+				return
+			}
+			msg := string(mes[0 : n-1])
+			s.Boadcast(user, msg)
+		}
+	}()
 
 	select {}
 

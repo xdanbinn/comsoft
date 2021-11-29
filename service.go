@@ -41,7 +41,6 @@ func (s *Server) Boadcast(user *user, msg string) {
 }
 
 func (s *Server) Handler(con net.Conn) {
-	//新用户建立连接了
 	user := NewUser(con, s)
 
 	user.Online()

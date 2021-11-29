@@ -1,7 +1,9 @@
 package main
 
 import (
+	"fmt"
 	"net"
+	"strings"
 )
 
 type user struct {
@@ -26,6 +28,9 @@ func (s *user) Online() {
 	s.Ser.Mux.Unlock()
 	s.Ser.Boadcast(s, "上线了")
 }
+func (s *user) sendMsg(msg string) {
+	s.Con.Write([]byte(msg))
+}
 
 func (s *user) Offline() {
 	s.Ser.Mux.Lock()
@@ -37,8 +42,22 @@ func (s *user) DoMessage(msg string) {
 	if msg == "who" {
 		for _, user := range s.Ser.ClientMap {
 			msg := "[" + user.Name + "]" + user.Addr + "在线...."
-			s.Con.Write([]byte(msg))
+			s.sendMsg(msg)
 		}
+	} else if len(msg) > 7 && msg[:7] == "rename|" {
+		newName := strings.Split(msg, "|")[1]
+		if _, ok := s.Ser.ClientMap[newName]; ok {
+			fmt.Println("用户名已经存在")
+		} else {
+			s.Ser.Mux.Lock()
+			delete(s.Ser.ClientMap, s.Name)
+			s.Ser.ClientMap[newName] = s
+			s.Ser.Mux.Unlock()
+			s.Name = newName
+			msg := "您已更新用户名为：" + newName + "\n"
+			s.sendMsg(msg)
+		}
+
 	} else {
 		s.Ser.Boadcast(s, msg)
 	}

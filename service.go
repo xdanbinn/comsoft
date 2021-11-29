@@ -7,7 +7,7 @@ import (
 	"sync"
 )
 
-type service struct {
+type Server struct {
 	Ip        string
 	Port      int
 	Message   chan string
@@ -15,15 +15,15 @@ type service struct {
 	Mux       sync.RWMutex
 }
 
-func NewService(ip string, port int) *service {
-	return &service{
+func NewService(ip string, port int) *Server {
+	return &Server{
 		Ip:        ip,
 		Port:      port,
 		Message:   make(chan string),
 		ClientMap: make(map[string]*user),
 	}
 }
-func (s *service) ListMsg() {
+func (s *Server) ListMsg() {
 	for {
 		msg := <-s.Message
 		s.Mux.Lock()
@@ -35,26 +35,23 @@ func (s *service) ListMsg() {
 
 }
 
-func (s *service) Boadcast(user *user, msg string) {
+func (s *Server) Boadcast(user *user, msg string) {
 	sendMsg := "[" + user.Name + "]" + user.Addr + msg
 	s.Message <- sendMsg
 }
 
-func (s *service) Handler(con net.Conn) {
+func (s *Server) Handler(con net.Conn) {
 	//新用户建立连接了
-	user := NewUser(con)
-	//服务器注册了
-	s.Mux.Lock()
-	s.ClientMap[user.Name] = user
-	s.Mux.Unlock()
-	//服务器广播
-	s.Boadcast(user, "上线了")
+	user := NewUser(con, s)
+
+	user.Online()
+
 	go func() {
 		mes := make([]byte, 4096)
 		for {
 			n, err := con.Read(mes)
 			if n == 0 {
-				s.Boadcast(user, "下线了")
+				user.Offline()
 				return
 			}
 			if err != nil && err != io.EOF {
@@ -62,7 +59,7 @@ func (s *service) Handler(con net.Conn) {
 				return
 			}
 			msg := string(mes[0 : n-1])
-			s.Boadcast(user, msg)
+			user.DoMessage(msg)
 		}
 	}()
 
@@ -70,7 +67,7 @@ func (s *service) Handler(con net.Conn) {
 
 }
 
-func (s *service) StartUp() {
+func (s *Server) StartUp() {
 	lister, errd := net.Listen("tcp", fmt.Sprintf("%s:%d", s.Ip, s.Port))
 	if errd != nil {
 		fmt.Println("net.Listen error:", errd)

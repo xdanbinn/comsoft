@@ -34,7 +34,15 @@ func (s *user) Offline() {
 	s.Ser.Boadcast(s, "下线了")
 }
 func (s *user) DoMessage(msg string) {
-	s.Ser.Boadcast(s, msg)
+	if msg == "who" {
+		for _, user := range s.Ser.ClientMap {
+			msg := "[" + user.Name + "]" + user.Addr + "在线...."
+			s.Con.Write([]byte(msg))
+		}
+	} else {
+		s.Ser.Boadcast(s, msg)
+	}
+
 }
 
 func NewUser(conn net.Conn, ser *Server) *user {

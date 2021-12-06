@@ -58,6 +58,23 @@ func (s *user) DoMessage(msg string) {
 			s.sendMsg(msg)
 		}
 
+	} else if strings.HasPrefix(msg, "to|") {
+		remoteName := strings.Split(msg, "|")[1]
+		if remoteName == "" {
+			fmt.Println("请输入对方用户名，to|张三|你好啊！")
+			return
+		}
+		remoteUser, ok := s.Ser.ClientMap[remoteName]
+		if !ok {
+			fmt.Println("请核对用户名！")
+			return
+		}
+		contx := strings.Split(msg, "|")[2]
+		if contx == "" {
+			fmt.Println("不可发送空白信息")
+			return
+		}
+		remoteUser.sendMsg(s.Name + "对你说：" + contx)
 	} else {
 		s.Ser.Boadcast(s, msg)
 	}

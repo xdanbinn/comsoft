@@ -5,6 +5,7 @@ import (
 	"io"
 	"net"
 	"sync"
+	"time"
 )
 
 type Server struct {
@@ -42,9 +43,8 @@ func (s *Server) Boadcast(user *user, msg string) {
 
 func (s *Server) Handler(con net.Conn) {
 	user := NewUser(con, s)
-
 	user.Online()
-
+	timeout := make(chan bool)
 	go func() {
 		mes := make([]byte, 4096)
 		for {
@@ -59,10 +59,19 @@ func (s *Server) Handler(con net.Conn) {
 			}
 			msg := string(mes[0 : n-1])
 			user.DoMessage(msg)
+			timeout <- true
 		}
 	}()
-
-	select {}
+	for {
+		select {
+		case <-timeout:
+		case <-time.After(time.Second * 600):
+			user.sendMsg("与服务器连接超时....")
+			close(user.C)
+			con.Close()
+			return
+		}
+	}
 
 }
 
